@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AUTO CHECK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#12161A; --surface:#1B2126; --surface-2:#232B31; --line:#2C363D;
+    --text:#ECEEF0; --muted:#8B96A1; --amber:#E8A33D; --green:#4FAE79; --red:#D9694F;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh;}
+  h1,.brand{font-family:'Space Grotesk',sans-serif;}
+
+  /* ---------- shared ---------- */
+  .screen{display:none;min-height:100vh;flex-direction:column;}
+  .screen.active{display:flex;}
+  .center-screen{align-items:center;justify-content:center;padding:24px;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px 24px;max-width:380px;width:100%;}
+  .brand{font-size:15px;color:var(--amber);font-weight:600;margin-bottom:6px;letter-spacing:0.02em;}
+  .card h1{font-size:20px;margin-bottom:8px;}
+  .card p.sub{font-size:13.5px;color:var(--muted);margin-bottom:20px;line-height:1.5;}
+  input[type=email], input[type=text], input[type=tel]{
+    width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;
+    color:var(--text);font-family:inherit;font-size:15px;padding:12px 14px;margin-bottom:12px;
+  }
+  input:focus{outline:none;border-color:var(--amber);}
+  .btn{
+    width:100%;background:var(--amber);color:#1a1204;border:none;border-radius:10px;
+    font-family:inherit;font-weight:600;font-size:15px;padding:13px;cursor:pointer;
+  }
+  .btn:disabled{opacity:0.5;cursor:default;}
+  .btn-secondary{background:none;border:1px solid var(--line);color:var(--muted);}
+  .error-msg{color:var(--red);font-size:13px;margin-bottom:10px;display:none;}
+  .error-msg.show{display:block;}
+  .hint{font-size:12px;color:var(--muted);margin-top:14px;text-align:center;}
+  .hint a{color:var(--amber);cursor:pointer;text-decoration:underline;}
+
+  /* ---------- app shell ---------- */
+  header{padding:20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:10;display:flex;align-items:center;justify-content:space-between;}
+  .header-left .brand{margin-bottom:2px;}
+  .header-title{font-size:17px;font-weight:600;}
+  .logout-link{font-size:12px;color:var(--muted);cursor:pointer;}
+  main{flex:1;padding:18px 20px 40px;max-width:520px;margin:0 auto;width:100%;}
+
+  /* ---------- list screen ---------- */
+  .tier-badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--surface-2);color:var(--amber);margin-bottom:16px;}
+  .new-btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--surface);border:1px dashed var(--line);border-radius:14px;
+    padding:16px;color:var(--muted);cursor:pointer;margin-bottom:16px;font-size:14px;font-weight:500;
+  }
+  .new-btn:hover{border-color:var(--amber);color:var(--amber);}
+  .checklist-item{
+    background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    padding:14px 16px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:12px;
+  }
+  .checklist-item-icon{font-size:20px;}
+  .checklist-item-main{flex:1;min-width:0;}
+  .checklist-item-title{font-size:15px;font-weight:600;margin-bottom:2px;}
+  .checklist-item-date{font-size:12px;color:var(--muted);}
+  .checklist-item-progress{font-size:12px;color:var(--green);font-variant-numeric:tabular-nums;}
+  .empty-state{text-align:center;color:var(--muted);font-size:13.5px;padding:30px 10px;line-height:1.5;}
+
+  /* ---------- checklist detail screen ---------- */
+  .back-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;cursor:pointer;color:var(--muted);font-size:13.5px;}
+  .title-input{
+    font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:600;background:none;border:none;
+    color:var(--text);width:100%;padding:6px 0;margin-bottom:4px;border-bottom:1px solid transparent;
+  }
+  .title-input:focus{outline:none;border-bottom:1px solid var(--line);}
+  .save-status{font-size:11px;color:var(--muted);margin-bottom:14px;height:14px;}
+
+  .progress-row{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+  .progress-track{flex:1;height:8px;background:var(--surface-2);border-radius:5px;overflow:hidden;}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--amber),var(--green));width:0%;transition:width 0.4s ease;border-radius:5px;}
+  .progress-label{font-size:13px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .progress-label b{color:var(--text);font-weight:600;}
+
+  .flags-banner{display:none;background:rgba(217,105,79,0.12);border:1px solid rgba(217,105,79,0.4);border-radius:12px;padding:12px 14px;font-size:13.5px;color:#F0B4A3;margin-bottom:16px;line-height:1.5;}
+  .flags-banner.show{display:block;}
+  .flags-banner b{color:#F5D0C4;}
+
+  .section{border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden;background:var(--surface);}
+  .section-head{display:flex;align-items:center;gap:12px;padding:15px 16px;cursor:pointer;user-select:none;}
+  .section-icon{font-size:19px;width:26px;text-align:center;flex-shrink:0;}
+  .section-title{flex:1;font-size:15px;font-weight:600;}
+  .section-count{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;flex-shrink:0;}
+  .section-count.done{color:var(--green);}
+  .chevron{color:var(--muted);font-size:12px;transition:transform 0.25s ease;flex-shrink:0;}
+  .section.open .chevron{transform:rotate(180deg);}
+  .section-body{max-height:0;overflow:hidden;transition:max-height 0.35s ease;}
+  .section.open .section-body{border-top:1px solid var(--line);}
+
+  .item{border-bottom:1px solid var(--line);}
+  .item:last-child{border-bottom:none;}
+  .item-row{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;}
+  .checkbox{width:21px;height:21px;border-radius:6px;border:1.5px solid var(--muted);flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s ease;background:transparent;}
+  .checkbox.checked{background:var(--green);border-color:var(--green);}
+  .checkbox.checked::after{content:"✓";color:var(--bg);font-size:13px;font-weight:700;}
+  .checkbox.flag{border-color:var(--red);}
+  .checkbox.flag.checked{background:var(--red);border-color:var(--red);}
+  .item-main{flex:1;min-width:0;}
+  .item-text{font-size:14px;line-height:1.45;color:var(--text);cursor:pointer;}
+  .item.checked .item-text{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line);}
+  .item-text.tag-flag::before{content:"🚩 ";}
+  .item-toggle{display:flex;align-items:center;gap:5px;margin-top:6px;cursor:pointer;}
+  .item-toggle-label{font-size:12px;color:var(--muted);}
+  .item-toggle-chevron{font-size:10px;color:var(--muted);transition:transform 0.2s ease;}
+  .item-toggle.open .item-toggle-chevron{transform:rotate(180deg);}
+  .note-dot{width:5px;height:5px;border-radius:50%;background:var(--amber);display:none;}
+  .note-dot.show{display:inline-block;}
+  .item-detail{max-height:0;overflow:hidden;transition:max-height 0.3s ease;}
+  .item-detail-inner{padding:10px 12px;margin-top:8px;background:var(--surface-2);border-radius:10px;border:1px solid var(--line);}
+  .how-label{font-size:11px;font-weight:600;color:var(--amber);margin-bottom:4px;}
+  .how-text{font-size:13px;line-height:1.5;color:var(--text);margin-bottom:10px;}
+  .note-label{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px;}
+  textarea.note-input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);font-family:inherit;font-size:13px;padding:8px 10px;resize:vertical;min-height:44px;}
+  textarea.note-input:focus{outline:none;border-color:var(--amber);}
+
+  .loading{padding:60px 20px;text-align:center;color:var(--muted);font-size:13px;}
+</style>
+</head>
+<body>
+
+<!-- ===== SCREEN 1: EMAIL ===== -->
+<div class="screen center-screen active" id="screenEmail">
+  <div class="card">
+    <div class="brand">AUTO CHECK</div>
+    <h1>Вход в приложение</h1>
+    <p class="sub">Укажите email, который использовали при покупке — на него будет отправлена ссылка для входа.</p>
+    <div class="error-msg" id="emailError"></div>
+    <input type="email" id="emailInput" placeholder="you@example.com" autocomplete="email">
+    <button class="btn" id="sendCodeBtn">Получить ссылку для входа</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN 2: WAITING FOR LINK CLICK ===== -->
+<div class="screen center-screen" id="screenCode">
+  <div class="card">
+    <div class="brand">AUTO CHECK</div>
+    <h1>Проверьте почту</h1>
+    <p class="sub">Мы отправили письмо со ссылкой для входа на <b id="codeEmailLabel"></b>. Откройте письмо и нажмите на ссылку — эта страница обновится сама. Проверьте папку "Спам", если письма нет в основной.</p>
+    <div class="error-msg" id="codeError"></div>
+    <button class="btn" id="verifyCodeBtn">Я перешла по ссылке — обновить</button>
+    <button class="btn btn-secondary" id="backToEmailBtn" style="margin-top:8px;">Назад</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN 3: NO ACCESS ===== -->
+<div class="screen center-screen" id="screenNoAccess">
+  <div class="card">
+    <div class="brand">AUTO CHECK</div>
+    <h1>Доступ не найден</h1>
+    <p class="sub">На этот email не привязано ни одной покупки AUTO CHECK. Если вы недавно оплатили — подождите пару минут и обновите страницу, письмо с доступом могло ещё идти.</p>
+    <button class="btn btn-secondary" id="retryAccessBtn">Обновить</button>
+  </div>
+</div>
+
+<!-- ===== SCREEN 4: LIST ===== -->
+<div class="screen" id="screenList">
+  <header>
+    <div class="header-left">
+      <div class="brand">AUTO CHECK</div>
+      <div class="header-title">Мои проверки</div>
+    </div>
+    <div class="logout-link" id="logoutBtn">Выйти</div>
+  </header>
+  <main>
+    <div class="tier-badge" id="tierBadge">PRO</div>
+    <div class="new-btn" id="newChecklistBtn">＋ Новая проверка</div>
+    <div id="checklistsContainer" class="loading">Загружаем твои проверки…</div>
+  </main>
+</div>
+
+<!-- ===== SCREEN 5: DETAIL ===== -->
+<div class="screen" id="screenDetail">
+  <header>
+    <div class="header-left">
+      <div class="brand">AUTO CHECK</div>
+    </div>
+    <div class="logout-link" id="logoutBtn2">Выйти</div>
+  </header>
+  <main>
+    <div class="back-row" id="backToListBtn">← Ко всем проверкам</div>
+    <input type="text" class="title-input" id="checklistTitleInput" placeholder="Название проверки (например, Audi Q3)">
+    <div class="save-status" id="detailSaveStatus"></div>
+
+    <div class="progress-row">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel"><b>0</b>/0</div>
+    </div>
+
+    <div class="flags-banner" id="flagsBanner">
+      <b>⚠ Найдены красные флаги.</b> Отмеченные пункты — повод для торга или отказа от сделки.
+    </div>
+
+    <div id="sectionsContainer"></div>
+  </main>
+</div>
+
+<script>
+/* ============ CONFIG — вставь свои значения ============ */
+const SUPABASE_URL = 'https://utvcodackweiakikfioz.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_y2f8GvePRdIkWig2SdPKRw_TizkR7OH';
+/* ========================================================= */
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentEmail = '';
+let currentTier = null;
+let currentChecklistId = null;
+let currentChecklistState = {}; // {itemId: {checked, note}}
+let saveTimer = null;
+
+const CHECKLIST_DATA = [
+  { icon:"📄", title:"Документы и юридическая чистота", items:[
+    {t:"ПТС/ЭПТС совпадает с VIN и данными в объявлении", how:"Сверь номер VIN в ПТС с номером на кузове — должны совпадать посимвольно."},
+    {t:"Нет отметок о залоге, лизинге, розыске", flag:true, how:"Проверь VIN на сайте ГИБДД и в реестре залогов ФНП."},
+    {t:"История ДТП и штрафов проверена по VIN", how:"Сервисы типа Автотека/Автокод покажут зафиксированные ДТП."},
+  ]},
+  { icon:"🔢", title:"Проверка VIN", items:[
+    {t:"VIN на кузове, в ПТС и под лобовым стеклом совпадают", how:"Три места должны показывать один и тот же номер."},
+    {t:"Нет следов перебивки номера", flag:true, how:"Осмотри площадку вокруг номера — следы сварки, кривые цифры — плохой знак."},
+  ]},
+  { icon:"🚗", title:"Кузов и ЛКП", items:[
+    {t:"Толщиномер показывает одинаковую толщину ЛКП", how:"Норма для заводской краски — 100–150 мкм."},
+    {t:"Нет следов свежей покраски или шпатлёвки", flag:true, how:"Смотри на кузов под углом на солнце — 'волны' выдают шпатлёвку."},
+  ]},
+  { icon:"🛢️", title:"Двигатель", items:[
+    {t:"Нет подтёков масла и антифриза", how:"Осмотри двигатель снизу и по периметру прокладок."},
+    {t:"Выхлоп чистый, без сизого или белого дыма", flag:true, how:"Сизый дым — износ поршневой, белый — проблема с ГБЦ."},
+  ]},
+  { icon:"🛞", title:"Ходовая", items:[
+    {t:"Нет стуков при проезде неровностей", how:"Проедь через лежачий полицейский на средней скорости."},
+    {t:"Шины изношены равномерно", flag:true, how:"Износ 'ёлочкой' — след проблем с развал-схождением."},
+  ]},
+  { icon:"🔌", title:"OBD-II / ELM327 диагностика", items:[
+    {t:"Сканер подключён, ошибок нет", how:"Разъём OBD-II обычно под рулевой колонкой."},
+    {t:"Нет следов недавнего сброса ошибок", flag:true, how:"Смотри на счётчик пробега 'с последнего сброса' в приложении."},
+  ]},
+];
+
+/* ---------- helpers ---------- */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function itemId(sIdx, iIdx){ return `${sIdx}-${iIdx}`; }
+
+/* ---------- AUTH ---------- */
+document.getElementById('sendCodeBtn').addEventListener('click', async () => {
+  const email = document.getElementById('emailInput').value.trim();
+  const errEl = document.getElementById('emailError');
+  errEl.classList.remove('show');
+  if (!email || !email.includes('@')) {
+    errEl.textContent = 'Введите корректный email';
+    errEl.classList.add('show');
+    return;
+  }
+  const btn = document.getElementById('sendCodeBtn');
+  btn.disabled = true; btn.textContent = 'Отправляем…';
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: true, emailRedirectTo: window.location.href }
+  });
+  btn.disabled = false; btn.textContent = 'Получить ссылку для входа';
+  if (error) {
+    errEl.textContent = 'Не удалось отправить код: ' + error.message;
+    errEl.classList.add('show');
+    return;
+  }
+  currentEmail = email;
+  document.getElementById('codeEmailLabel').textContent = email;
+  showScreen('screenCode');
+});
+
+document.getElementById('backToEmailBtn').addEventListener('click', () => showScreen('screenEmail'));
+
+document.getElementById('verifyCodeBtn').addEventListener('click', async () => {
+  const errEl = document.getElementById('codeError');
+  errEl.classList.remove('show');
+
+  const btn = document.getElementById('verifyCodeBtn');
+  btn.disabled = true; btn.textContent = 'Проверяем…';
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  btn.disabled = false; btn.textContent = 'Я перешла по ссылке — обновить';
+
+  if (!session) {
+    errEl.textContent = 'Пока не видим вход. Убедитесь, что перешли по ссылке в письме именно в этом браузере, и попробуйте ещё раз.';
+    errEl.classList.add('show');
+    return;
+  }
+  await afterLogin();
+});
+
+document.getElementById('logoutBtn').addEventListener('click', logout);
+document.getElementById('logoutBtn2').addEventListener('click', logout);
+document.getElementById('retryAccessBtn').addEventListener('click', afterLogin);
+
+async function logout(){
+  await supabaseClient.auth.signOut();
+  currentEmail = ''; currentTier = null;
+  document.getElementById('emailInput').value = '';
+  showScreen('screenEmail');
+}
+
+async function afterLogin(){
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) { showScreen('screenEmail'); return; }
+  currentEmail = user.email;
+
+  const { data: purchases, error } = await supabaseClient
+    .from('purchases')
+    .select('tier')
+    .eq('email', currentEmail);
+
+  if (error || !purchases || purchases.length === 0) {
+    showScreen('screenNoAccess');
+    return;
+  }
+
+  const order = { baza: 1, pro: 2, max: 3 };
+  currentTier = purchases.reduce((best, p) => order[p.tier] > order[best] ? p.tier : best, 'baza');
+
+  document.getElementById('tierBadge').textContent = currentTier.toUpperCase();
+  showScreen('screenList');
+  loadChecklists();
+}
+
+/* ---------- restore session on page load ---------- */
+(async () => {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session) await afterLogin();
+})();
+
+/* ---------- LIST SCREEN ---------- */
+document.getElementById('newChecklistBtn').addEventListener('click', async () => {
+  const { data, error } = await supabaseClient
+    .from('checklists')
+    .insert({ email: currentEmail, title: 'Новая проверка', tier: currentTier, data: {} })
+    .select()
+    .single();
+  if (error) { alert('Не удалось создать проверку: ' + error.message); return; }
+  openChecklist(data);
+});
+
+async function loadChecklists(){
+  const container = document.getElementById('checklistsContainer');
+  container.className = 'loading';
+  container.textContent = 'Загружаем твои проверки…';
+
+  const { data, error } = await supabaseClient
+    .from('checklists')
+    .select('*')
+    .eq('email', currentEmail)
+    .order('created_at', { ascending: false });
+
+  if (error) { container.textContent = 'Ошибка загрузки: ' + error.message; return; }
+
+  container.className = '';
+  container.innerHTML = '';
+
+  if (!data || data.length === 0) {
+    container.innerHTML = '<div class="empty-state">Пока нет ни одной проверки.<br>Нажми "+ Новая проверка", чтобы начать.</div>';
+    return;
+  }
+
+  data.forEach(row => {
+    const totalItems = CHECKLIST_DATA.reduce((n, s) => n + s.items.length, 0);
+    const checkedCount = Object.values(row.data || {}).filter(v => v.checked).length;
+    const date = new Date(row.created_at).toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+    const el = document.createElement('div');
+    el.className = 'checklist-item';
+    el.innerHTML = `
+      <div class="checklist-item-icon">🚗</div>
+      <div class="checklist-item-main">
+        <div class="checklist-item-title">${row.title}</div>
+        <div class="checklist-item-date">${date}</div>
+      </div>
+      <div class="checklist-item-progress">${checkedCount}/${totalItems}</div>
+    `;
+    el.addEventListener('click', () => openChecklist(row));
+    container.appendChild(el);
+  });
+}
+
+document.getElementById('backToListBtn').addEventListener('click', () => {
+  showScreen('screenList');
+  loadChecklists();
+});
+
+/* ---------- DETAIL SCREEN ---------- */
+function openChecklist(row){
+  currentChecklistId = row.id;
+  currentChecklistState = row.data || {};
+  document.getElementById('checklistTitleInput').value = row.title;
+  renderDetail();
+  showScreen('screenDetail');
+}
+
+document.getElementById('checklistTitleInput').addEventListener('input', (e) => {
+  scheduleTitleSave(e.target.value);
+});
+
+let titleSaveTimer = null;
+function scheduleTitleSave(title){
+  clearTimeout(titleSaveTimer);
+  titleSaveTimer = setTimeout(async () => {
+    await supabaseClient.from('checklists').update({ title, updated_at: new Date().toISOString() }).eq('id', currentChecklistId);
+  }, 500);
+}
+
+function scheduleDataSave(){
+  const statusEl = document.getElementById('detailSaveStatus');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    const { error } = await supabaseClient
+      .from('checklists')
+      .update({ data: currentChecklistState, updated_at: new Date().toISOString() })
+      .eq('id', currentChecklistId);
+    statusEl.textContent = error ? 'Не удалось сохранить' : 'Сохранено ✓';
+    setTimeout(() => { statusEl.textContent = ''; }, 1500);
+  }, 400);
+}
+
+let checkedCount = 0, totalCount = 0;
+
+function renderDetail(){
+  checkedCount = 0; totalCount = 0;
+  const container = document.getElementById('sectionsContainer');
+  container.innerHTML = '';
+
+  CHECKLIST_DATA.forEach((section, sIdx) => {
+    totalCount += section.items.length;
+
+    const sectionEl = document.createElement('div');
+    sectionEl.className = 'section' + (sIdx === 0 ? ' open' : '');
+
+    const head = document.createElement('div');
+    head.className = 'section-head';
+    head.innerHTML = `
+      <div class="section-icon">${section.icon}</div>
+      <div class="section-title">${section.title}</div>
+      <div class="section-count" data-count>0/${section.items.length}</div>
+      <div class="chevron">▾</div>
+    `;
+    head.addEventListener('click', () => {
+      sectionEl.classList.toggle('open');
+      updateBodyHeight(sectionEl);
+    });
+
+    const body = document.createElement('div');
+    body.className = 'section-body';
+
+    section.items.forEach((item, iIdx) => {
+      const id = itemId(sIdx, iIdx);
+      const saved = currentChecklistState[id] || { checked:false, note:'' };
+      if (saved.checked) checkedCount++;
+
+      const itemEl = document.createElement('div');
+      itemEl.className = 'item' + (saved.checked ? ' checked' : '');
+
+      const row = document.createElement('div');
+      row.className = 'item-row';
+
+      const cb = document.createElement('div');
+      cb.className = 'checkbox' + (item.flag ? ' flag' : '') + (saved.checked ? ' checked' : '');
+
+      const mainCol = document.createElement('div');
+      mainCol.className = 'item-main';
+
+      const txt = document.createElement('div');
+      txt.className = 'item-text' + (item.flag ? ' tag-flag' : '');
+      txt.textContent = item.t;
+
+      const toggleRow = document.createElement('div');
+      toggleRow.className = 'item-toggle';
+      toggleRow.innerHTML = `
+        <span class="item-toggle-label">Как проверить / заметка</span>
+        <span class="note-dot${saved.note ? ' show' : ''}" data-notedot></span>
+        <span class="item-toggle-chevron">▾</span>
+      `;
+
+      const detail = document.createElement('div');
+      detail.className = 'item-detail';
+      detail.innerHTML = `
+        <div class="item-detail-inner">
+          <div class="how-label">Как проверить</div>
+          <div class="how-text">${item.how || ''}</div>
+          <div class="note-label">Твоя заметка</div>
+          <textarea class="note-input" placeholder="Что заметил(а)...">${saved.note || ''}</textarea>
+        </div>
+      `;
+
+      const textarea = detail.querySelector('textarea');
+      textarea.addEventListener('input', () => {
+        currentChecklistState[id] = currentChecklistState[id] || { checked:false, note:'' };
+        currentChecklistState[id].note = textarea.value;
+        toggleRow.querySelector('[data-notedot]').classList.toggle('show', !!textarea.value);
+        scheduleDataSave();
+      });
+      textarea.addEventListener('click', e => e.stopPropagation());
+
+      toggleRow.addEventListener('click', () => {
+        toggleRow.classList.toggle('open');
+        if (toggleRow.classList.contains('open')) {
+          detail.style.maxHeight = detail.scrollHeight + 'px';
+        } else {
+          detail.style.maxHeight = '0px';
+        }
+        setTimeout(() => updateBodyHeight(sectionEl), 320);
+      });
+
+      const toggleCheck = () => {
+        const nowChecked = !cb.classList.contains('checked');
+        cb.classList.toggle('checked', nowChecked);
+        itemEl.classList.toggle('checked', nowChecked);
+        checkedCount += nowChecked ? 1 : -1;
+
+        currentChecklistState[id] = currentChecklistState[id] || { checked:false, note:'' };
+        currentChecklistState[id].checked = nowChecked;
+        scheduleDataSave();
+
+        if (item.flag) {
+          const anyFlag = Array.from(document.querySelectorAll('.checkbox.flag.checked')).length > 0;
+          document.getElementById('flagsBanner').classList.toggle('show', anyFlag);
+        }
+        updateProgress();
+        updateSectionCount(sectionEl, section.items.length);
+      };
+      cb.addEventListener('click', toggleCheck);
+      txt.addEventListener('click', toggleCheck);
+
+      mainCol.appendChild(txt);
+      mainCol.appendChild(toggleRow);
+      mainCol.appendChild(detail);
+      row.appendChild(cb);
+      row.appendChild(mainCol);
+      itemEl.appendChild(row);
+      body.appendChild(itemEl);
+    });
+
+    sectionEl.appendChild(head);
+    sectionEl.appendChild(body);
+    container.appendChild(sectionEl);
+    updateSectionCount(sectionEl, section.items.length);
+  });
+
+  const anyFlagChecked = document.querySelectorAll('.checkbox.flag.checked').length > 0;
+  document.getElementById('flagsBanner').classList.toggle('show', anyFlagChecked);
+  document.querySelectorAll('.section.open').forEach(s => updateBodyHeight(s));
+  updateProgress();
+}
+
+function updateSectionCount(sectionEl, total){
+  const checkedInSection = sectionEl.querySelectorAll('.checkbox.checked').length;
+  const countEl = sectionEl.querySelector('[data-count]');
+  countEl.textContent = `${checkedInSection}/${total}`;
+  countEl.classList.toggle('done', checkedInSection === total);
+}
+function updateBodyHeight(sectionEl){
+  const body = sectionEl.querySelector('.section-body');
+  body.style.maxHeight = sectionEl.classList.contains('open') ? body.scrollHeight + 'px' : '0px';
+}
+function updateProgress(){
+  const pct = totalCount ? Math.round((checkedCount/totalCount)*100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').innerHTML = `<b>${checkedCount}</b>/${totalCount}`;
+}
+</script>
+
+</body>
+</html>
