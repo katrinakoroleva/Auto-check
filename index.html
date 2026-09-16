@@ -137,9 +137,9 @@
 
   .vin-tool{padding:14px 16px;border-bottom:1px solid var(--line);}
   .vin-tool input{margin-bottom:10px;}
-  .vin-links{display:flex;flex-wrap:wrap;gap:8px;}
+  .vin-links{display:flex; flex-direction:column;}
   .vin-link-btn{
-    font-size:12.5px;padding:8px 12px;border-radius:8px;background:var(--surface-2);
+    display:inline-block;font-size:12.5px;padding:8px 12px;border-radius:8px;background:var(--surface-2);
     border:1px solid var(--line);color:var(--text);text-decoration:none;cursor:pointer;
   }
   .vin-link-btn:hover{border-color:var(--amber);}
@@ -148,6 +148,7 @@
   .doc-item:last-child{border-bottom:none;}
   .doc-icon{font-size:19px;}
   .doc-label{flex:1;font-size:14px;font-weight:500;}
+  .doc-copies{font-size:11.5px;font-weight:400;color:var(--muted);margin-top:2px;}
   .doc-arrow{color:var(--muted);font-size:13px;}
 
   .summary-panel{border:1px solid var(--line);border-radius:14px;background:var(--surface);margin-top:6px;padding:16px;}
@@ -278,6 +279,8 @@ let currentEmail = '';
 let currentTier = null;
 let currentChecklistId = null;
 let currentChecklistState = {}; // {itemId: {checked, note}}
+let openSectionIndices = new Set([0]);
+let summaryExpanded = false;
 let saveTimer = null;
 
 const CHECKLIST_DATA = [
@@ -396,18 +399,45 @@ const CHECKLIST_DATA = [
     {t:"Двигатель не перегревается после поездки", how:"После тест-драйва снова посмотрите на температуру двигателя и убедитесь, что нет предупреждений."},
     {t:"После тест-драйва не появились новые течи или запахи", how:"После остановки загляните под автомобиль и осмотрите моторный отсек."},
   ]},
-  { icon:"📟", title:"Базовая диагностика OBD-II / ELM327",
-    proExtra:"<b>Какое приложение скачать:</b> Car Scanner ELM OBD2 или Torque (Android), OBD Fusion (iOS) — все бесплатные в базовой версии и работают с обычным Bluetooth/Wi-Fi адаптером ELM327.<br><br><b>Частые коды ошибок и что они значат:</b><br>• P0300–P0304 — пропуски зажигания в одном или нескольких цилиндрах<br>• P0171 / P0174 — обеднённая топливная смесь<br>• P0420 — снижение эффективности катализатора<br>• P0455 — негерметичность топливной системы (часто просто неплотная крышка бака)",
+  { icon:"📟", title:"Диагностика OBD-II / ELM327",
+    proExtra:"<b>Какой адаптер выбрать:</b> не берите самый дешёвый ELM327 за 200–300₽ — часто проблемы с совместимостью. Лучше адаптер на проверенном чипе, с отзывами.<br><br>⚠️ ELM327 работает по стандартному OBD-II и может не видеть ошибки отдельных блоков (ABS, Airbag, АКПП) — для них иногда нужен марочный сканер.<br><br><b>Какое приложение скачать:</b> Car Scanner ELM OBD2 (Android и iPhone, самый универсальный вариант) или OBD Auto Doctor как альтернатива.<br><br><b>Частые коды ошибок и что они значат:</b><br>• P0300–P0308 — пропуски зажигания (случайные или в конкретном цилиндре): свечи, катушки, форсунки, подсос воздуха<br>• P0171/P0174 — бедная смесь: подсос воздуха, топливная система, лямбда-зонд<br>• P0172/P0175 — богатая смесь: подача топлива, датчики, форсунки<br>• P0420/P0430 — снижение эффективности катализатора (не всегда означает его замену)<br>• P0128 — двигатель долго не выходит на рабочую температуру, часто термостат<br>• P0562 — низкое напряжение бортовой сети: аккумулятор, генератор, проводка<br>• P0101 — проблема с расходомером воздуха (MAF)<br>• P0115–P0119 — датчик температуры охлаждающей жидкости",
     items:[
     {t:"Подключить ELM327 и считать ошибки", how:"1. Найдите разъём OBD-II — обычно под рулём, в нижней части панели.<br>2. Подключите адаптер.<br>3. Включите зажигание.<br>4. Откройте приложение и подключитесь к автомобилю.<br>5. Запустите проверку ошибок.<br><br>🟢 Нет ошибок → ставим ОК.<br>🟡 Есть ошибки → запишите их коды и не стирайте."},
     {t:"Проверить активные ошибки двигателя", how:"Откройте в приложении раздел «Ошибки / DTC / Trouble Codes».<br><br>🟢 No errors / Ошибок нет → хорошо.<br>🔴 Есть P0xxx → запишите код и его описание.<br><br>❗️ Не нажимайте «Clear / Стереть ошибки», пока не сохраните результаты."},
+    {t:"Проверить Pending / ожидающие ошибки", minTier:"pro", how:"В разделе ошибок найдите Pending / Ожидающие.<br><br>🟢 Нет Pending-ошибок → хорошо.<br>🟡 Есть Pending → запишите код и покажите его диагносту.", tip:"Pending означает, что автомобиль обнаружил проблему, но она ещё не появлялась достаточно раз, чтобы записаться как постоянная ошибка."},
+    {t:"Проверить готовность систем (Readiness)", minTier:"pro", how:"Найдите в приложении I/M Readiness / Готовность систем.<br><br>🟢 Большинство систем Ready → хорошо.<br>🟡 Несколько Not Ready → спросите, не отключался ли аккумулятор и не стирались ли недавно ошибки.", tip:"Not Ready не означает неисправность — после сброса аккумулятора нужно несколько поездок для повторной проверки систем."},
+    {t:"Посмотреть температуру двигателя (Live Data)", minTier:"pro", how:"Откройте Live Data / Текущие параметры → Coolant Temperature / ECT. Проверяйте после прогрева.<br><br>🟢 Вышла на рабочий диапазон и стабильна → хорошо.<br>🟡 Долго прогревается или ведёт себя необычно → стоит разобраться."},
+    {t:"Проверить обороты холостого хода", minTier:"pro", how:"Откройте Live Data → RPM, после прогрева двигателя.<br><br>🟢 Обороты стабильны → хорошо.<br>🟡 Постоянно плавают или двигатель заметно трясётся → повод для диагностики."},
+    {t:"Проверить напряжение бортовой сети", minTier:"pro", how:"Найдите Voltage / Battery Voltage — сначала при включённом зажигании, затем после запуска двигателя.<br><br>🟢 Значение стабильное → хорошо.<br>🟡 Сильно низкое или нестабильное → проверить аккумулятор и генератор.", tip:"Показания дешёвого ELM327 могут быть неточными — это ориентировочная проверка, а не измерение мультиметром."},
   ]},
+  { icon:"🔢", title:"Карта торга", minTier:"pro", referenceOnly:true,
+    content:"Ориентир, на сколько можно торговаться, если нашли дефект:<br><br><b style='color:var(--green)'>🟢 Мелочи — 1 000–10 000 ₽</b><br>• Лампочки, мелкие электропроблемы — 1–3 тыс. ₽<br>• Расходники, которые скоро менять — 3–7 тыс. ₽<br>• Мелкие сколы/царапины — 2–5 тыс. ₽<br>• Небольшая коррозия — 3–10 тыс. ₽<br>• Один неработающий стеклоподъёмник/замок — 3–8 тыс. ₽<br><br><b style='color:var(--amber)'>🟡 Средний торг — 10 000–30 000 ₽</b><br>• Комплект тормозов — 10–25 тыс. ₽<br>• Амортизаторы/элементы подвески — 10–25 тыс. ₽<br>• Сцепление — 20–35 тыс. ₽<br>• Несколько элементов кузова под покраску — 15–30 тыс. ₽<br>• Шины, если требуют замены — 15–30 тыс. ₽<br><br><b style='color:#e08a3d'>🟠 Большой торг — 30 000–70 000 ₽</b><br>• Серьёзный ремонт подвески — 30–50 тыс. ₽<br>• Сцепление + сопутствующие работы — 30–50 тыс. ₽<br>• Проблемы с системой охлаждения — 30–60 тыс. ₽<br>• Значительные кузовные работы — 30–70 тыс. ₽<br>• Катализатор/выхлоп — 30–70 тыс. ₽<br><br><b style='color:var(--red)'>🔴 70 000 ₽+ — сначала диагностика, потом решение</b><br>• АКПП с признаками серьёзной неисправности<br>• Двигатель с низкой компрессией/сильным дымом/стуком<br>• Серьёзное ДТП с повреждением силовых элементов<br>• Проблемы с геометрией кузова<br>• Серьёзные проблемы с VIN/документами<br>• Несколько крупных неисправностей одновременно" },
+  { icon:"📞", title:"Скрипт первого звонка продавцу", minTier:"max",
+    outro:"Не принимайте «вроде нет» за чистую монету — юридическую чистоту всё равно нужно проверить самостоятельно.",
+    items:[
+    {t:"Вы собственник автомобиля?", flag:true, how:"Если продаёт не собственник — уточнить причину и на каком основании продаёт."},
+    {t:"Автомобиль оформлен на вас? Сколько времени владеете?"},
+    {t:"ПТС оригинал или ЭПТС? Сколько было владельцев?"},
+    {t:"Нет ограничений, залога, ареста?", flag:true, how:"Не принимать «вроде нет» — юридическую чистоту всё равно проверять самостоятельно."},
+    {t:"Какие элементы красились?"},
+    {t:"Есть ли проблемы с двигателем или расход масла?"},
+    {t:"Есть ли проблемы с коробкой/сцеплением?"},
+    {t:"Горят ли сейчас какие-нибудь ошибки?"},
+    {t:"Есть ли сейчас неисправности, о которых нужно знать до приезда?"},
+  ]},
+  { icon:"🚗", title:"Что сделать после покупки", minTier:"max", items:[
+    {t:"Записать текущий пробег и дату покупки"},
+    {t:"Оформить ОСАГО"},
+    {t:"Зарегистрировать автомобиль в ГИБДД"},
+    {t:"При необходимости заменить масло, фильтры, технические жидкости и другие расходники"},
+    {t:"Сохранить чеки и зафиксировать, что и когда было заменено"},
+  ], outro:"В дальнейшем обслуживайте автомобиль по регламенту производителя и фактическому состоянию."},
 ];
 
 const MAX_DOCUMENTS = [
-  { icon:"📝", label:"Договор купли-продажи", href:"dkp.html" },
-  { icon:"📋", label:"Акт приёма-передачи", href:"akt.html" },
-  { icon:"🧾", label:"Расписка о получении денег", href:"raspiska.html" },
+  { icon:"📝", label:"Договор купли-продажи", href:"dkp.html", copies:"3 экземпляра — продавцу, покупателю, в ГИБДД/МФЦ" },
+  { icon:"📋", label:"Акт приёма-передачи", href:"akt.html", copies:"2 экземпляра — продавцу и покупателю" },
+  { icon:"🧾", label:"Расписка о получении денег", href:"raspiska.html", copies:"1 экземпляр — остаётся у покупателя" },
 ];
 
 /* ---------- helpers ---------- */
@@ -537,7 +567,15 @@ async function loadChecklists(){
 
   data.forEach(row => {
     const rowState = row.data || {};
-    const totalItems = CHECKLIST_DATA.reduce((n, s, sIdx) => n + getVisibleEntries(s, sIdx, rowState).length, 0);
+    const rowTier = row.tier || 'baza';
+    const rowIsProOrMax = rowTier === 'pro' || rowTier === 'max';
+    const rowIsMax = rowTier === 'max';
+    const totalItems = CHECKLIST_DATA.reduce((n, s, sIdx) => {
+      if (s.referenceOnly) return n;
+      if (s.minTier === 'pro' && !rowIsProOrMax) return n;
+      if (s.minTier === 'max' && !rowIsMax) return n;
+      return n + getVisibleEntries(s, sIdx, rowState).length;
+    }, 0);
     const checkedCount = Object.entries(rowState).filter(([k, v]) => !k.startsWith('__') && v.checked).length;
     const date = new Date(row.created_at).toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
 
@@ -574,6 +612,8 @@ document.getElementById('backToListBtn').addEventListener('click', () => {
 function openChecklist(row){
   currentChecklistId = row.id;
   currentChecklistState = row.data || {};
+  openSectionIndices = new Set([0]);
+  summaryExpanded = false;
   document.getElementById('checklistTitleInput').value = row.title;
   renderDetail();
   showScreen('screenDetail');
@@ -612,6 +652,9 @@ function isMax(){ return currentTier === 'max'; }
 function anyFlagUnchecked(){
   for (let sIdx = 0; sIdx < CHECKLIST_DATA.length; sIdx++) {
     const section = CHECKLIST_DATA[sIdx];
+    if (section.referenceOnly) continue;
+    if (section.minTier === 'pro' && !isProOrMax()) continue;
+    if (section.minTier === 'max' && !isMax()) continue;
     const visibleEntries = getVisibleEntries(section, sIdx);
     for (const { item, iIdx } of visibleEntries) {
       if (!item.flag) continue;
@@ -639,6 +682,8 @@ function getVisibleEntries(section, sIdx, state){
   return section.items
     .map((item, iIdx) => ({ item, iIdx }))
     .filter(({ item }) => {
+      if (item.minTier === 'pro' && !isProOrMax()) return false;
+      if (item.minTier === 'max' && !isMax()) return false;
       if (!item.sub) return true;
       if (!transType) return false; // hide sub-items until a type is chosen
       return item.sub === transType;
@@ -651,11 +696,58 @@ function renderDetail(){
   container.innerHTML = '';
 
   CHECKLIST_DATA.forEach((section, sIdx) => {
+    const tierLocked = (section.minTier === 'pro' && !isProOrMax()) || (section.minTier === 'max' && !isMax());
+
+    if (tierLocked) {
+      const lockedSection = document.createElement('div');
+      lockedSection.className = 'section';
+      const requiredLabel = section.minTier === 'max' ? 'MAX' : 'PRO';
+      lockedSection.innerHTML = `
+        <div class="section-head" style="cursor:default;">
+          <div class="section-icon">${section.icon}</div>
+          <div class="section-title" style="color:var(--muted);">${section.title}</div>
+          <div class="tier-badge" style="margin-bottom:0;">${requiredLabel}</div>
+        </div>
+        <div class="locked-box" style="margin:0 16px 14px;">🔒 Этот раздел доступен в тарифе ${requiredLabel}.</div>
+      `;
+      container.appendChild(lockedSection);
+      return;
+    }
+
+    if (section.referenceOnly) {
+      const refSection = document.createElement('div');
+      refSection.className = 'section' + (openSectionIndices.has(sIdx) ? ' open' : '');
+      const refHead = document.createElement('div');
+      refHead.className = 'section-head';
+      refHead.innerHTML = `
+        <div class="section-icon">${section.icon}</div>
+        <div class="section-title">${section.title}</div>
+        <div class="chevron">▾</div>
+      `;
+      refHead.addEventListener('click', () => {
+        refSection.classList.toggle('open');
+        if (refSection.classList.contains('open')) openSectionIndices.add(sIdx);
+        else openSectionIndices.delete(sIdx);
+        updateBodyHeight(refSection);
+      });
+      const refBody = document.createElement('div');
+      refBody.className = 'section-body';
+      const refContent = document.createElement('div');
+      refContent.className = 'section-intro';
+      refContent.innerHTML = section.content;
+      refBody.appendChild(refContent);
+      refSection.appendChild(refHead);
+      refSection.appendChild(refBody);
+      container.appendChild(refSection);
+      updateBodyHeight(refSection);
+      return;
+    }
+
     const visibleEntries = getVisibleEntries(section, sIdx);
     totalCount += visibleEntries.length;
 
     const sectionEl = document.createElement('div');
-    sectionEl.className = 'section' + (sIdx === 0 ? ' open' : '');
+    sectionEl.className = 'section' + (openSectionIndices.has(sIdx) ? ' open' : '');
 
     const head = document.createElement('div');
     head.className = 'section-head';
@@ -667,6 +759,8 @@ function renderDetail(){
     `;
     head.addEventListener('click', () => {
       sectionEl.classList.toggle('open');
+      if (sectionEl.classList.contains('open')) openSectionIndices.add(sIdx);
+      else openSectionIndices.delete(sIdx);
       updateBodyHeight(sectionEl);
     });
 
@@ -693,8 +787,11 @@ function renderDetail(){
       selEl.querySelectorAll('.trans-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
+          openSectionIndices.add(sIdx);
+          const scrollPos = window.scrollY;
           setTransmissionType(sIdx, btn.dataset.type);
           renderDetail();
+          window.scrollTo(0, scrollPos);
         });
       });
       body.appendChild(selEl);
@@ -712,35 +809,57 @@ function renderDetail(){
       toolEl.className = 'vin-tool';
       if (isProOrMax()) {
         toolEl.innerHTML = `
-          <input type="text" id="vinLookupInput" placeholder="Введите VIN, например XTA21099..." maxlength="17" style="text-transform:uppercase;">
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <input type="text" id="vinLookupInput" placeholder="Введите VIN, например XTA21099..." maxlength="17" style="text-transform:uppercase; margin-bottom:0; flex:1;">
+            <button type="button" id="vinCopyBtn" class="vin-link-btn" style="white-space:nowrap;">📋 Копировать</button>
+          </div>
           <div class="vin-links" id="vinLinksRow"></div>
         `;
         body.appendChild(toolEl);
         const vinInput = toolEl.querySelector('#vinLookupInput');
+        const copyBtn = toolEl.querySelector('#vinCopyBtn');
         const linksRow = toolEl.querySelector('#vinLinksRow');
         const services = [
-          { name: "ГИБДД (история, ограничения)", build: v => `https://гибдд.рф/check/auto` },
-          { name: "Реестр залогов ФНП", build: v => `https://www.reestr-zalogov.ru/search` },
-          { name: "Таможня (растаможка)", build: v => `https://customs.gov.ru/cars?vin=${v}` },
+          { name: "Таможня (растаможка)", note: "VIN подставится автоматически", build: v => `https://customs.gov.ru/cars?vin=${v}` },
+          { name: "ГИБДД (история, ограничения)", note: "вставьте VIN на сайте (Ctrl+V)", build: () => `https://гибдд.рф/check/auto` },
+          { name: "Реестр залогов ФНП", note: "вставьте VIN на сайте (Ctrl+V)", build: () => `https://www.reestr-zalogov.ru/search` },
         ];
         function renderLinks(){
           const v = vinInput.value.trim().toUpperCase();
           linksRow.innerHTML = '';
           services.forEach(s => {
+            const wrap = document.createElement('div');
             const a = document.createElement('a');
             a.className = 'vin-link-btn';
             a.textContent = s.name;
             a.target = '_blank';
             a.rel = 'noopener';
             a.href = s.build(v);
-            linksRow.appendChild(a);
+            wrap.appendChild(a);
+            const noteEl = document.createElement('div');
+            noteEl.style.cssText = 'font-size:11px;color:var(--muted);margin:3px 0 8px 2px;';
+            noteEl.textContent = s.note;
+            wrap.appendChild(noteEl);
+            linksRow.appendChild(wrap);
           });
         }
+        copyBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const v = vinInput.value.trim().toUpperCase();
+          if (!v) return;
+          try {
+            await navigator.clipboard.writeText(v);
+            copyBtn.textContent = '✓ Скопировано';
+            setTimeout(() => { copyBtn.textContent = '📋 Копировать'; }, 1500);
+          } catch(err) {
+            vinInput.select();
+          }
+        });
         vinInput.addEventListener('input', renderLinks);
         vinInput.addEventListener('click', e => e.stopPropagation());
         renderLinks();
       } else {
-        toolEl.innerHTML = `<div class="locked-box">🔒 В PRO и MAX здесь появляется поле для VIN с готовыми ссылками на бесплатные проверочные сервисы (ГИБДД, реестр залогов и др.) — не нужно искать вручную.</div>`;
+        toolEl.innerHTML = `<div class="locked-box">🔒 В PRO и MAX здесь появляется поле для VIN с кнопкой копирования и ссылками на бесплатные проверочные сервисы (ГИБДД, реестр залогов, таможня).</div>`;
         body.appendChild(toolEl);
       }
     }
@@ -887,7 +1006,7 @@ function renderDetail(){
       a.href = doc.href;
       a.target = '_blank';
       a.rel = 'noopener';
-      a.innerHTML = `<span class="doc-icon">${doc.icon}</span><span class="doc-label">${doc.label}</span><span class="doc-arrow">Открыть →</span>`;
+      a.innerHTML = `<span class="doc-icon">${doc.icon}</span><span class="doc-label">${doc.label}<div class="doc-copies">${doc.copies}</div></span><span class="doc-arrow">Открыть →</span>`;
       docsBody.appendChild(a);
     });
     docsSection.appendChild(docsHead);
@@ -909,6 +1028,9 @@ function renderSummary(){
   const priority = [];
   const regular = [];
   CHECKLIST_DATA.forEach((section, sIdx) => {
+    if (section.referenceOnly) return;
+    if (section.minTier === 'pro' && !isProOrMax()) return;
+    if (section.minTier === 'max' && !isMax()) return;
     const visibleEntries = getVisibleEntries(section, sIdx);
     visibleEntries.forEach(({ item, iIdx }) => {
       const id = itemId(sIdx, iIdx);
@@ -928,12 +1050,29 @@ function renderSummary(){
     return;
   }
 
+  const badge = priority.length > 0
+    ? `<span style="color:var(--red);">${priority.length} важных</span> + ${regular.length} остальных`
+    : `${regular.length} пункт(ов)`;
+
   el.innerHTML = `
     <div class="summary-panel">
-      <div class="summary-title">Итог по проверке</div>
-      <div class="summary-sub">Не отмечено как ОК — ${total} пункт(ов). Собрано здесь, чтобы не открывать каждый раздел заново.</div>
-      <div id="summaryItems"></div>
+      <div class="summary-header" id="summaryHeader" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer;">
+        <div>
+          <div class="summary-title">Итог по проверке</div>
+          <div class="summary-sub" style="margin-bottom:0;">Не отмечено: ${badge}</div>
+        </div>
+        <div class="chevron" id="summaryChevron" style="transform:${summaryExpanded ? 'rotate(180deg)' : 'none'};">▾</div>
+      </div>
+      <div id="summaryBody" style="max-height:${summaryExpanded ? '2000px' : '0'}; overflow:hidden; transition:max-height 0.3s ease;">
+        <div id="summaryItems" style="margin-top:14px;"></div>
+      </div>
     </div>`;
+
+  document.getElementById('summaryHeader').addEventListener('click', () => {
+    summaryExpanded = !summaryExpanded;
+    renderSummary();
+  });
+
   const itemsEl = el.querySelector('#summaryItems');
 
   function renderGroup(list, labelText, labelClass, priorityStyle){
