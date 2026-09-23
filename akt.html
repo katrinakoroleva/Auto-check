@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Акт приёма-передачи автомобиля</title>
+<style>
+  body{font-family:'Times New Roman', serif; max-width:800px; margin:30px auto; padding:0 20px; line-height:1.6; color:#111;}
+  h1{font-size:20px; text-align:center; margin-bottom:6px;}
+  .sub{text-align:center; color:#555; margin-bottom:30px; font-size:14px;}
+  .fill{border-bottom:1px solid #333; display:inline-block; min-width:160px; padding:0 4px;}
+  .field{margin-bottom:10px; font-size:14px;}
+  table{width:100%; border-collapse:collapse; margin:20px 0;}
+  th, td{border:1px solid #999; padding:8px 10px; font-size:13px; text-align:left;}
+  th{background:#f2f2f2;}
+  .sign-row{display:flex; justify-content:space-between; margin-top:50px;}
+  .sign-block{width:45%;}
+  .sign-line{border-bottom:1px solid #333; margin-top:40px; margin-bottom:4px;}
+  .print-btn{
+    display:block; margin:0 auto 30px; padding:10px 20px; background:#1a1a1a; color:#fff;
+    border:none; border-radius:6px; cursor:pointer; font-size:14px;
+  }
+  @media print { .print-btn{ display:none; } }
+</style>
+</head>
+<body>
+
+<button class="print-btn" onclick="window.print()">🖨️ Распечатать</button>
+
+<h1>АКТ ПРИЁМА-ПЕРЕДАЧИ ТРАНСПОРТНОГО СРЕДСТВА</h1>
+<div class="sub">Приложение к договору купли-продажи от «<span class="fill">&nbsp;</span>» <span class="fill">&nbsp;</span> 20<span class="fill">&nbsp;</span> г.</div>
+
+<div class="field">Продавец: <span class="fill" style="min-width:400px;">&nbsp;</span></div>
+<div class="field">Покупатель: <span class="fill" style="min-width:400px;">&nbsp;</span></div>
+
+<p>составили настоящий акт о том, что Продавец передал, а Покупатель принял следующее транспортное средство и документы к нему:</p>
+
+<div class="field">Марка, модель: <span class="fill" style="min-width:250px;">&nbsp;</span> &nbsp; VIN: <span class="fill">&nbsp;</span></div>
+<div class="field">Пробег на момент передачи: <span class="fill">&nbsp;</span> км</div>
+
+<table>
+  <tr><th>Проверено при передаче</th><th>Отметка</th></tr>
+  <tr><td>Комплект ключей (шт.)</td><td>&nbsp;</td></tr>
+  <tr><td>ПТС / ЭПТС</td><td>&nbsp;</td></tr>
+  <tr><td>СТС (свидетельство о регистрации)</td><td>&nbsp;</td></tr>
+  <tr><td>Полис ОСАГО</td><td>&nbsp;</td></tr>
+  <tr><td>Сервисная книжка</td><td>&nbsp;</td></tr>
+  <tr><td>Комплект резины (если передаётся)</td><td>&nbsp;</td></tr>
+  <tr><td>Видимые повреждения на момент передачи зафиксированы (фото)</td><td>&nbsp;</td></tr>
+</table>
+
+<p>Претензий по техническому состоянию и комплектности на момент подписания настоящего акта стороны не имеют / имеют следующие (указать):</p>
+<div class="field" style="min-height:40px; border-bottom:1px solid #333;">&nbsp;</div>
+
+<div class="sign-row">
+  <div class="sign-block">
+    <div>Передал (Продавец):</div>
+    <div class="sign-line"></div>
+    <div style="font-size:12px; color:#555;">подпись / расшифровка</div>
+  </div>
+  <div class="sign-block">
+    <div>Принял (Покупатель):</div>
+    <div class="sign-line"></div>
+    <div style="font-size:12px; color:#555;">подпись / расшифровка</div>
+  </div>
+</div>
+
+<p style="margin-top:20px; font-size:13px; color:#555;">Акт составляется в 2 (двух) экземплярах, имеющих равную силу — по одному для Продавца и для Покупателя. В ГИБДД не предоставляется.</p>
+
+<p style="margin-top:20px; font-size:12px; color:#777;">Этот шаблон носит справочный характер и не заменяет консультацию юриста. AUTO CHECK не несёт ответственности за юридические последствия использования данного документа.</p>
+
+</body>
+</html>

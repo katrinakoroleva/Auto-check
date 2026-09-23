@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Расписка о получении денежных средств</title>
+<style>
+  body{font-family:'Times New Roman', serif; max-width:800px; margin:30px auto; padding:0 20px; line-height:1.7; color:#111;}
+  h1{font-size:20px; text-align:center; margin-bottom:6px;}
+  .sub{text-align:center; color:#555; margin-bottom:30px; font-size:14px;}
+  .fill{border-bottom:1px solid #333; display:inline-block; min-width:160px; padding:0 4px;}
+  .field{margin-bottom:14px; font-size:14px;}
+  .sign-row{display:flex; justify-content:space-between; margin-top:60px;}
+  .sign-block{width:45%;}
+  .sign-line{border-bottom:1px solid #333; margin-top:40px; margin-bottom:4px;}
+  .print-btn{
+    display:block; margin:0 auto 30px; padding:10px 20px; background:#1a1a1a; color:#fff;
+    border:none; border-radius:6px; cursor:pointer; font-size:14px;
+  }
+  @media print { .print-btn{ display:none; } }
+</style>
+</head>
+<body>
+
+<button class="print-btn" onclick="window.print()">🖨️ Распечатать</button>
+
+<h1>РАСПИСКА</h1>
+<div class="sub">о получении денежных средств</div>
+
+<p>г. <span class="fill">&nbsp;</span> &nbsp;&nbsp;&nbsp; «<span class="fill">&nbsp;</span>» <span class="fill">&nbsp;</span> 20<span class="fill">&nbsp;</span> г.</p>
+
+<div class="field">
+  Я, <span class="fill" style="min-width:400px;">&nbsp;</span>,<br>
+  паспорт серия <span class="fill">&nbsp;</span> № <span class="fill">&nbsp;</span>, выдан <span class="fill" style="min-width:300px;">&nbsp;</span>,<br>
+  зарегистрированный(ая) по адресу: <span class="fill" style="min-width:400px;">&nbsp;</span>,
+</div>
+
+<div class="field">
+  получил(а) от <span class="fill" style="min-width:400px;">&nbsp;</span>,<br>
+  паспорт серия <span class="fill">&nbsp;</span> № <span class="fill">&nbsp;</span>, выдан <span class="fill" style="min-width:300px;">&nbsp;</span>,
+</div>
+
+<div class="field">
+  денежные средства в размере <span class="fill" style="min-width:250px;">&nbsp;</span> рублей
+  (<span class="fill" style="min-width:350px;">&nbsp;</span> — сумма прописью)
+</div>
+
+<div class="field">
+  в качестве полной оплаты по договору купли-продажи транспортного средства
+  <span class="fill" style="min-width:200px;">&nbsp;</span> (марка, модель), VIN <span class="fill">&nbsp;</span>,
+  от «<span class="fill">&nbsp;</span>» <span class="fill">&nbsp;</span> 20<span class="fill">&nbsp;</span> г.
+</div>
+
+<p>Претензий по расчёту стороны друг к другу не имеют.</p>
+
+<div class="sign-row">
+  <div class="sign-block">
+    <div>Получил (Продавец):</div>
+    <div class="sign-line"></div>
+    <div style="font-size:12px; color:#555;">подпись / расшифровка</div>
+  </div>
+  <div class="sign-block">
+    <div>Передал (Покупатель):</div>
+    <div class="sign-line"></div>
+    <div style="font-size:12px; color:#555;">подпись / расшифровка</div>
+  </div>
+</div>
+
+<p style="margin-top:20px; font-size:13px; color:#555;">Расписка составляется в 1 (одном) экземпляре и остаётся у Покупателя как подтверждение факта оплаты.</p>
+
+<p style="margin-top:20px; font-size:12px; color:#777;">Этот шаблон носит справочный характер и не заменяет консультацию юриста. AUTO CHECK не несёт ответственности за юридические последствия использования данного документа.</p>
+
+</body>
+</html>
